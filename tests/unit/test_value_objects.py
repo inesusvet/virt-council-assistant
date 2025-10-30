@@ -1,5 +1,5 @@
 """Unit tests for value objects."""
-import pytest
+
 
 from app.domain.value_objects import (
     ProjectStatus,

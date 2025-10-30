@@ -1,7 +1,7 @@
 """MongoDB repository implementations."""
+
 from typing import Optional
 from uuid import UUID
-from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.domain.entities import Message, Project, KnowledgeEntry
@@ -25,11 +25,7 @@ class MongoMessageRepository(MessageRepository):
             "created_at": message.created_at,
             "processed": message.processed,
         }
-        await self.collection.replace_one(
-            {"_id": str(message.id)},
-            document,
-            upsert=True
-        )
+        await self.collection.replace_one({"_id": str(message.id)}, document, upsert=True)
         return message
 
     async def get_by_id(self, message_id: UUID) -> Optional[Message]:
@@ -47,10 +43,7 @@ class MongoMessageRepository(MessageRepository):
 
     async def mark_as_processed(self, message_id: UUID) -> None:
         """Mark a message as processed."""
-        await self.collection.update_one(
-            {"_id": str(message_id)},
-            {"$set": {"processed": True}}
-        )
+        await self.collection.update_one({"_id": str(message_id)}, {"$set": {"processed": True}})
 
     @staticmethod
     def _to_entity(document: dict) -> Message:
@@ -82,11 +75,7 @@ class MongoProjectRepository(ProjectRepository):
             "created_at": project.created_at,
             "updated_at": project.updated_at,
         }
-        await self.collection.replace_one(
-            {"_id": str(project.id)},
-            document,
-            upsert=True
-        )
+        await self.collection.replace_one({"_id": str(project.id)}, document, upsert=True)
         return project
 
     async def get_by_id(self, project_id: UUID) -> Optional[Project]:
@@ -111,9 +100,7 @@ class MongoProjectRepository(ProjectRepository):
 
     async def search(self, query: str) -> list[Project]:
         """Search projects by name or description using text search."""
-        cursor = self.collection.find(
-            {"$text": {"$search": query}}
-        )
+        cursor = self.collection.find({"$text": {"$search": query}})
         documents = await cursor.to_list(length=None)
         return [self._to_entity(doc) for doc in documents]
 
@@ -146,11 +133,7 @@ class MongoKnowledgeRepository(KnowledgeRepository):
             "tags": entry.tags,
             "created_at": entry.created_at,
         }
-        await self.collection.replace_one(
-            {"_id": str(entry.id)},
-            document,
-            upsert=True
-        )
+        await self.collection.replace_one({"_id": str(entry.id)}, document, upsert=True)
         return entry
 
     async def get_by_id(self, entry_id: UUID) -> Optional[KnowledgeEntry]:
@@ -168,9 +151,7 @@ class MongoKnowledgeRepository(KnowledgeRepository):
 
     async def search(self, query: str, limit: int = 10) -> list[KnowledgeEntry]:
         """Search knowledge base entries using text search."""
-        cursor = self.collection.find(
-            {"$text": {"$search": query}}
-        ).limit(limit)
+        cursor = self.collection.find({"$text": {"$search": query}}).limit(limit)
         documents = await cursor.to_list(length=limit)
         return [self._to_entity(doc) for doc in documents]
 

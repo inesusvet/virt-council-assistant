@@ -1,4 +1,5 @@
 """Configuration management for the application."""
+
 import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
@@ -33,9 +34,7 @@ class Config:
             openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
             gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
             gemini_model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
-            database_url=os.getenv(
-                "DATABASE_URL", "sqlite+aiosqlite:///./data/virt_council.db"
-            ),
+            database_url=os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/virt_council.db"),
             storage_backend=os.getenv("STORAGE_BACKEND", "sqlalchemy"),
             mongodb_url=os.getenv("MONGODB_URL", "mongodb://localhost:27017"),
             mongodb_database=os.getenv("MONGODB_DATABASE", "virt_council"),

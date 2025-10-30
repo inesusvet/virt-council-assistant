@@ -1,4 +1,5 @@
 """LLM provider implementation."""
+
 import json
 from pydantic_ai import Agent
 from pydantic_ai.models.gemini import GeminiModel
@@ -30,9 +31,7 @@ class PydantIicAILLMProvider:
     ) -> MessageClassification:
         """Classify a message and suggest project association."""
         # Create project context for the agent
-        project_context = "\n".join(
-            [f"- {p.name}: {p.description} (ID: {p.id})" for p in projects]
-        )
+        project_context = "\n".join([f"- {p.name}: {p.description} (ID: {p.id})" for p in projects])
 
         prompt = prompts.CLASSIFY_MESSAGE_PROMPT.format(
             content=content, project_context=project_context

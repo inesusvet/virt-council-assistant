@@ -1,6 +1,6 @@
 """Unit tests for MongoDB repositories."""
+
 import pytest
-from datetime import datetime, UTC
 from uuid import uuid4
 
 from app.domain.entities import Message, Project, KnowledgeEntry

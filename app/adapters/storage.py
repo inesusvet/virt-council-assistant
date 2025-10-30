@@ -1,8 +1,9 @@
 """SQLAlchemy repository implementations."""
+
 import json
 from typing import Optional
 from uuid import UUID
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities import Message, Project, KnowledgeEntry
@@ -43,9 +44,7 @@ class SQLAlchemyMessageRepository(MessageRepository):
     async def get_unprocessed(self, limit: int = 10) -> list[Message]:
         """Get unprocessed messages."""
         result = await self.session.execute(
-            select(MessageModel)
-            .where(MessageModel.processed == False)
-            .limit(limit)
+            select(MessageModel).where(~MessageModel.processed).limit(limit)
         )
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]
@@ -124,9 +123,7 @@ class SQLAlchemyProjectRepository(ProjectRepository):
 
     async def get_by_name(self, name: str) -> Optional[Project]:
         """Retrieve a project by name."""
-        result = await self.session.execute(
-            select(ProjectModel).where(ProjectModel.name == name)
-        )
+        result = await self.session.execute(select(ProjectModel).where(ProjectModel.name == name))
         model = result.scalar_one_or_none()
         return self._to_entity(model) if model else None
 
@@ -195,9 +192,7 @@ class SQLAlchemyKnowledgeRepository(KnowledgeRepository):
     async def get_by_project(self, project_id: UUID) -> list[KnowledgeEntry]:
         """Get all knowledge entries for a project."""
         result = await self.session.execute(
-            select(KnowledgeEntryModel).where(
-                KnowledgeEntryModel.project_id == str(project_id)
-            )
+            select(KnowledgeEntryModel).where(KnowledgeEntryModel.project_id == str(project_id))
         )
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]

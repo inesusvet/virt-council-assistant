@@ -1,4 +1,5 @@
 """MongoDB connection and session management."""
+
 from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 import logging
@@ -11,7 +12,7 @@ class MongoDatabase:
 
     def __init__(self, connection_string: str, database_name: str = "virt_council"):
         """Initialize MongoDB connection.
-        
+
         Args:
             connection_string: MongoDB connection string (e.g., mongodb://localhost:27017)
             database_name: Name of the database to use
@@ -28,7 +29,7 @@ class MongoDatabase:
             self._client = AsyncIOMotorClient(self.connection_string)
             self._database = self._client[self.database_name]
             # Test connection
-            await self._client.admin.command('ping')
+            await self._client.admin.command("ping")
             logger.info("Successfully connected to MongoDB")
 
     async def close(self) -> None:
@@ -50,22 +51,22 @@ class MongoDatabase:
         """Create database indexes for better query performance."""
         if self._database is None:
             raise RuntimeError("Database not connected. Call connect() first.")
-        
+
         # Message collection indexes
         await self._database.messages.create_index("user_id")
         await self._database.messages.create_index("chat_id")
         await self._database.messages.create_index("processed")
         await self._database.messages.create_index("created_at")
-        
+
         # Project collection indexes
         await self._database.projects.create_index("name", unique=True)
         await self._database.projects.create_index("status")
         await self._database.projects.create_index([("name", "text"), ("description", "text")])
-        
+
         # Knowledge entries collection indexes
         await self._database.knowledge_entries.create_index("project_id")
         await self._database.knowledge_entries.create_index("source_message_id")
         await self._database.knowledge_entries.create_index([("content", "text")])
         await self._database.knowledge_entries.create_index("tags")
-        
+
         logger.info("MongoDB indexes created successfully")

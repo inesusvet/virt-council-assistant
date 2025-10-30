@@ -1,4 +1,5 @@
 """Repository interfaces for the Virtual Council Assistant."""
+
 from abc import ABC, abstractmethod
 from typing import Optional
 from uuid import UUID

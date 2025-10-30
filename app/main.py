@@ -1,11 +1,13 @@
 """Main application entry point."""
+
 import asyncio
 import logging
 import sys
 from pathlib import Path
+from typing import Union
 
 from app.infrastructure.config import Config
-from app.infrastructure.database import Database
+from app.infrastructure.database import Database, MongoDatabase
 from app.adapters.telegram import TelegramBotAdapter
 from app.adapters.llm import PydanticAILLMProvider
 from app.adapters.storage import (
@@ -13,9 +15,15 @@ from app.adapters.storage import (
     SQLAlchemyProjectRepository,
     SQLAlchemyKnowledgeRepository,
 )
-from app.use_cases import ProcessMessageUseCase
-from app.domain.entities import Message
+from app.adapters.mongodb_storage import (
+    MongoMessageRepository,
+    MongoProjectRepository,
+    MongoKnowledgeRepository,
+)
+from app.use_cases import ProcessMessageUseCase, CreateProjectUseCase
+from app.domain.entities import Message, Project
 from app.domain.value_objects import MessageClassification
+from app.domain.repositories import MessageRepository, ProjectRepository, KnowledgeRepository
 
 # Configure logging
 logging.basicConfig(
@@ -34,9 +42,27 @@ class Application:
 
     def __init__(self, config: Config):
         self.config = config
-        self.database: Database | None = None
+        self.database: Union[Database, MongoDatabase, None] = None
         self.telegram_bot: TelegramBotAdapter | None = None
         self.llm_provider: PydanticAILLMProvider | None = None
+
+    def _get_repositories(self) -> tuple[MessageRepository, ProjectRepository, KnowledgeRepository]:
+        """Get repository instances based on storage backend."""
+        if self.config.storage_backend == "mongodb":
+            if not isinstance(self.database, MongoDatabase):
+                raise RuntimeError("MongoDB database not initialized")
+            db = self.database.database
+            return (
+                MongoMessageRepository(db),
+                MongoProjectRepository(db),
+                MongoKnowledgeRepository(db),
+            )
+        else:  # sqlalchemy
+            if not isinstance(self.database, Database):
+                raise RuntimeError("SQLAlchemy database not initialized")
+            # Note: For SQLAlchemy, we need a session which is handled differently
+            # This is a synchronous method, so we return a factory instead
+            raise RuntimeError("Use async context for SQLAlchemy repositories")
 
     async def initialize(self) -> None:
         """Initialize application components."""
@@ -46,10 +72,16 @@ class Application:
         data_dir = Path("data")
         data_dir.mkdir(exist_ok=True)
 
-        # Initialize database
-        self.database = Database(self.config.database_url)
-        await self.database.create_tables()
-        logger.info("Database initialized")
+        # Initialize database based on storage backend
+        if self.config.storage_backend == "mongodb":
+            self.database = MongoDatabase(self.config.mongodb_url, self.config.mongodb_database)
+            await self.database.connect()
+            await self.database.create_indexes()
+            logger.info("MongoDB initialized")
+        else:  # sqlalchemy
+            self.database = Database(self.config.database_url)
+            await self.database.create_tables()
+            logger.info("SQLAlchemy database initialized")
 
         # Initialize LLM provider
         if self.config.llm_provider == "openai":
@@ -75,21 +107,49 @@ class Application:
         # Set up message handler
         async def message_handler(message: Message) -> MessageClassification:
             """Handle incoming messages."""
-            async with await self.database.get_session() as session:
-                message_repo = SQLAlchemyMessageRepository(session)
-                project_repo = SQLAlchemyProjectRepository(session)
-                knowledge_repo = SQLAlchemyKnowledgeRepository(session)
+            if self.config.storage_backend == "mongodb":
+                message_repo, project_repo, knowledge_repo = self._get_repositories()
+            else:
+                async with await self.database.get_session() as session:
+                    message_repo = SQLAlchemyMessageRepository(session)
+                    project_repo = SQLAlchemyProjectRepository(session)
+                    knowledge_repo = SQLAlchemyKnowledgeRepository(session)
 
-                use_case = ProcessMessageUseCase(
-                    message_repo=message_repo,
-                    project_repo=project_repo,
-                    knowledge_repo=knowledge_repo,
-                    llm_provider=self.llm_provider,
-                )
+                    use_case = ProcessMessageUseCase(
+                        message_repo=message_repo,
+                        project_repo=project_repo,
+                        knowledge_repo=knowledge_repo,
+                        llm_provider=self.llm_provider,
+                    )
 
-                return await use_case.execute(message)
+                    return await use_case.execute(message)
+
+            # MongoDB case
+            use_case = ProcessMessageUseCase(
+                message_repo=message_repo,
+                project_repo=project_repo,
+                knowledge_repo=knowledge_repo,
+                llm_provider=self.llm_provider,
+            )
+            return await use_case.execute(message)
+
+        # Set up project creation handler
+        async def create_project_handler(name: str, description: str) -> Project:
+            """Handle project creation."""
+            if self.config.storage_backend == "mongodb":
+                _, project_repo, _ = self._get_repositories()
+            else:
+                async with await self.database.get_session() as session:
+                    project_repo = SQLAlchemyProjectRepository(session)
+                    use_case = CreateProjectUseCase(project_repo)
+                    return await use_case.execute(name, description)
+
+            # MongoDB case
+            use_case = CreateProjectUseCase(project_repo)
+            return await use_case.execute(name, description)
 
         self.telegram_bot.set_message_handler(message_handler)
+        self.telegram_bot.set_create_project_handler(create_project_handler)
         logger.info("Telegram bot initialized")
 
     async def start(self) -> None:

@@ -1,5 +1,5 @@
 """Unit tests for configuration."""
-import os
+
 import pytest
 
 from app.infrastructure.config import Config

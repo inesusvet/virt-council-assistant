@@ -1,4 +1,5 @@
 """Database models using SQLAlchemy."""
+
 from datetime import datetime
 from uuid import uuid4
 from sqlalchemy import String, Text, DateTime, Boolean, ForeignKey, Integer
@@ -8,6 +9,7 @@ from typing import Optional
 
 class Base(DeclarativeBase):
     """Base class for all database models."""
+
     pass
 
 
@@ -21,9 +23,7 @@ class MessageModel(Base):
     user_id: Mapped[str] = mapped_column(String(100), nullable=False)
     chat_id: Mapped[str] = mapped_column(String(100), nullable=False)
     message_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     processed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
@@ -36,9 +36,7 @@ class ProjectModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -62,9 +60,7 @@ class KnowledgeEntryModel(Base):
         String(36), ForeignKey("projects.id"), nullable=True
     )
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     project: Mapped[Optional["ProjectModel"]] = relationship(
         "ProjectModel", back_populates="knowledge_entries"

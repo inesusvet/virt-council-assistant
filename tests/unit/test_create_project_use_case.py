@@ -1,6 +1,6 @@
 """Unit tests for CreateProjectUseCase."""
+
 import pytest
-from uuid import uuid4
 
 from app.domain.entities import Project
 from app.use_cases import CreateProjectUseCase
@@ -21,7 +21,10 @@ class MockProjectRepository:
         """Search projects by name or description."""
         results = []
         for project in self.projects:
-            if query.lower() in project.name.lower() or query.lower() in project.description.lower():
+            if (
+                query.lower() in project.name.lower()
+                or query.lower() in project.description.lower()
+            ):
                 results.append(project)
         return results
 
