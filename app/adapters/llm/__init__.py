@@ -1,4 +1,4 @@
 """LLM provider adapters for AI interactions."""
-from .provider import PydantIicAILLMProvider
+from .provider import PydanticAILLMProvider
 
-__all__ = ["PydantIicAILLMProvider"]
+__all__ = ["PydanticAILLMProvider"]
