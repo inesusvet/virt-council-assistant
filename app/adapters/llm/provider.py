@@ -10,7 +10,7 @@ from app.domain.entities import KnowledgeEntry, Project
 from app.domain.value_objects import MessageClassification, ResearchSuggestion
 
 
-class PydantIicAILLMProvider:
+class PydanticAILLMProvider:
     """LLM provider implementation using Pydantic AI."""
 
     def __init__(self, provider: str, api_key: str, model_name: str):
