@@ -44,6 +44,11 @@ class ProjectRepository(ABC):
         pass
 
     @abstractmethod
+    async def get_by_name(self, name: str) -> Optional[Project]:
+        """Retrieve a project by name."""
+        pass
+
+    @abstractmethod
     async def get_all_active(self) -> list[Project]:
         """Get all active projects."""
         pass

@@ -72,6 +72,41 @@ class ProcessMessageUseCase:
         return classification
 
 
+class CreateProjectUseCase:
+    """Use case for creating a new project."""
+
+    def __init__(self, project_repo: ProjectRepository):
+        self.project_repo = project_repo
+
+    async def execute(self, name: str, description: str) -> Project:
+        """Create a new project with the given name and description.
+        
+        Args:
+            name: Project name
+            description: Project description
+            
+        Returns:
+            Created project
+            
+        Raises:
+            ValueError: If a project with the same name already exists
+        """
+        # Check if project with this name already exists
+        existing = await self.project_repo.search(name)
+        for project in existing:
+            if project.name.lower() == name.lower():
+                raise ValueError(f"Project with name '{name}' already exists")
+        
+        # Create new project
+        project = Project(
+            name=name,
+            description=description,
+            status="active"
+        )
+        
+        return await self.project_repo.save(project)
+
+
 class GetNextStepsUseCase:
     """Use case for getting research suggestions for a project."""
 

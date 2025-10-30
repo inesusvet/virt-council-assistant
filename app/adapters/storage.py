@@ -122,6 +122,14 @@ class SQLAlchemyProjectRepository(ProjectRepository):
         model = result.scalar_one_or_none()
         return self._to_entity(model) if model else None
 
+    async def get_by_name(self, name: str) -> Optional[Project]:
+        """Retrieve a project by name."""
+        result = await self.session.execute(
+            select(ProjectModel).where(ProjectModel.name == name)
+        )
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
     async def get_all_active(self) -> list[Project]:
         """Get all active projects."""
         result = await self.session.execute(
