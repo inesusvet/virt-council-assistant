@@ -19,14 +19,16 @@ class SQLAlchemyMessageRepository(MessageRepository):
 
     async def save(self, message: Message) -> Message:
         """Save a message to the database."""
+        # Use Pydantic's model_dump to get field values
+        data = message.model_dump()
         model = MessageModel(
-            id=str(message.id),
-            content=message.content,
-            user_id=message.user_id,
-            chat_id=message.chat_id,
-            message_id=message.message_id,
-            created_at=message.created_at,
-            processed=message.processed,
+            id=str(data["id"]),
+            content=data["content"],
+            user_id=data["user_id"],
+            chat_id=data["chat_id"],
+            message_id=data["message_id"],
+            created_at=data["created_at"],
+            processed=data["processed"],
         )
         self.session.add(model)
         await self.session.commit()
@@ -61,15 +63,17 @@ class SQLAlchemyMessageRepository(MessageRepository):
 
     @staticmethod
     def _to_entity(model: MessageModel) -> Message:
-        """Convert database model to domain entity."""
-        return Message(
-            id=UUID(model.id),
-            content=model.content,
-            user_id=model.user_id,
-            chat_id=model.chat_id,
-            message_id=model.message_id,
-            created_at=model.created_at,
-            processed=model.processed,
+        """Convert database model to domain entity using Pydantic validation."""
+        return Message.model_validate(
+            {
+                "id": model.id,
+                "content": model.content,
+                "user_id": model.user_id,
+                "chat_id": model.chat_id,
+                "message_id": model.message_id,
+                "created_at": model.created_at,
+                "processed": model.processed,
+            }
         )
 
 
@@ -81,27 +85,30 @@ class SQLAlchemyProjectRepository(ProjectRepository):
 
     async def save(self, project: Project) -> Project:
         """Save a project to the database."""
+        # Use Pydantic's model_dump to get field values
+        data = project.model_dump()
+
         # Check if project exists
         result = await self.session.execute(
-            select(ProjectModel).where(ProjectModel.id == str(project.id))
+            select(ProjectModel).where(ProjectModel.id == str(data["id"]))
         )
         existing = result.scalar_one_or_none()
 
         if existing:
             # Update existing
-            existing.name = project.name
-            existing.description = project.description
-            existing.status = project.status
-            existing.updated_at = project.updated_at
+            existing.name = data["name"]
+            existing.description = data["description"]
+            existing.status = data["status"]
+            existing.updated_at = data["updated_at"]
         else:
             # Create new
             model = ProjectModel(
-                id=str(project.id),
-                name=project.name,
-                description=project.description,
-                status=project.status,
-                created_at=project.created_at,
-                updated_at=project.updated_at,
+                id=str(data["id"]),
+                name=data["name"],
+                description=data["description"],
+                status=data["status"],
+                created_at=data["created_at"],
+                updated_at=data["updated_at"],
             )
             self.session.add(model)
 
@@ -149,14 +156,16 @@ class SQLAlchemyProjectRepository(ProjectRepository):
 
     @staticmethod
     def _to_entity(model: ProjectModel) -> Project:
-        """Convert database model to domain entity."""
-        return Project(
-            id=UUID(model.id),
-            name=model.name,
-            description=model.description,
-            status=model.status,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
+        """Convert database model to domain entity using Pydantic validation."""
+        return Project.model_validate(
+            {
+                "id": model.id,
+                "name": model.name,
+                "description": model.description,
+                "status": model.status,
+                "created_at": model.created_at,
+                "updated_at": model.updated_at,
+            }
         )
 
 
@@ -168,13 +177,15 @@ class SQLAlchemyKnowledgeRepository(KnowledgeRepository):
 
     async def save(self, entry: KnowledgeEntry) -> KnowledgeEntry:
         """Save a knowledge entry to the database."""
+        # Use Pydantic's model_dump to get field values
+        data = entry.model_dump()
         model = KnowledgeEntryModel(
-            id=str(entry.id),
-            content=entry.content,
-            source_message_id=str(entry.source_message_id),
-            project_id=str(entry.project_id) if entry.project_id else None,
-            tags=json.dumps(entry.tags),
-            created_at=entry.created_at,
+            id=str(data["id"]),
+            content=data["content"],
+            source_message_id=str(data["source_message_id"]),
+            project_id=str(data["project_id"]) if data["project_id"] else None,
+            tags=json.dumps(data["tags"]),
+            created_at=data["created_at"],
         )
         self.session.add(model)
         await self.session.commit()
@@ -210,12 +221,14 @@ class SQLAlchemyKnowledgeRepository(KnowledgeRepository):
 
     @staticmethod
     def _to_entity(model: KnowledgeEntryModel) -> KnowledgeEntry:
-        """Convert database model to domain entity."""
-        return KnowledgeEntry(
-            id=UUID(model.id),
-            content=model.content,
-            source_message_id=UUID(model.source_message_id),
-            project_id=UUID(model.project_id) if model.project_id else None,
-            tags=json.loads(model.tags) if model.tags else [],
-            created_at=model.created_at,
+        """Convert database model to domain entity using Pydantic validation."""
+        return KnowledgeEntry.model_validate(
+            {
+                "id": model.id,
+                "content": model.content,
+                "source_message_id": model.source_message_id,
+                "project_id": model.project_id if model.project_id else None,
+                "tags": json.loads(model.tags) if model.tags else [],
+                "created_at": model.created_at,
+            }
         )

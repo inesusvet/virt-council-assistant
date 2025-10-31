@@ -1,6 +1,5 @@
 """Unit tests for value objects."""
 
-
 from app.domain.value_objects import (
     ProjectStatus,
     MessageClassification,

@@ -16,16 +16,12 @@ class MongoMessageRepository(MessageRepository):
 
     async def save(self, message: Message) -> Message:
         """Save a message to the database."""
-        document = {
-            "_id": str(message.id),
-            "content": message.content,
-            "user_id": message.user_id,
-            "chat_id": message.chat_id,
-            "message_id": message.message_id,
-            "created_at": message.created_at,
-            "processed": message.processed,
-        }
-        await self.collection.replace_one({"_id": str(message.id)}, document, upsert=True)
+        # Use Pydantic's model_dump to serialize
+        document = message.model_dump(mode="json")
+        document["_id"] = str(message.id)
+        document.pop("id", None)  # Remove id field, use _id instead
+
+        await self.collection.replace_one({"_id": document["_id"]}, document, upsert=True)
         return message
 
     async def get_by_id(self, message_id: UUID) -> Optional[Message]:
@@ -47,16 +43,10 @@ class MongoMessageRepository(MessageRepository):
 
     @staticmethod
     def _to_entity(document: dict) -> Message:
-        """Convert database document to domain entity."""
-        return Message(
-            id=UUID(document["_id"]),
-            content=document["content"],
-            user_id=document["user_id"],
-            chat_id=document["chat_id"],
-            message_id=document.get("message_id"),
-            created_at=document["created_at"],
-            processed=document["processed"],
-        )
+        """Convert database document to domain entity using Pydantic validation."""
+        # Map _id back to id for Pydantic model
+        document["id"] = document.pop("_id")
+        return Message.model_validate(document)
 
 
 class MongoProjectRepository(ProjectRepository):
@@ -67,15 +57,12 @@ class MongoProjectRepository(ProjectRepository):
 
     async def save(self, project: Project) -> Project:
         """Save a project to the database."""
-        document = {
-            "_id": str(project.id),
-            "name": project.name,
-            "description": project.description,
-            "status": project.status,
-            "created_at": project.created_at,
-            "updated_at": project.updated_at,
-        }
-        await self.collection.replace_one({"_id": str(project.id)}, document, upsert=True)
+        # Use Pydantic's model_dump to serialize
+        document = project.model_dump(mode="json")
+        document["_id"] = str(project.id)
+        document.pop("id", None)  # Remove id field, use _id instead
+
+        await self.collection.replace_one({"_id": document["_id"]}, document, upsert=True)
         return project
 
     async def get_by_id(self, project_id: UUID) -> Optional[Project]:
@@ -106,15 +93,10 @@ class MongoProjectRepository(ProjectRepository):
 
     @staticmethod
     def _to_entity(document: dict) -> Project:
-        """Convert database document to domain entity."""
-        return Project(
-            id=UUID(document["_id"]),
-            name=document["name"],
-            description=document["description"],
-            status=document["status"],
-            created_at=document["created_at"],
-            updated_at=document["updated_at"],
-        )
+        """Convert database document to domain entity using Pydantic validation."""
+        # Map _id back to id for Pydantic model
+        document["id"] = document.pop("_id")
+        return Project.model_validate(document)
 
 
 class MongoKnowledgeRepository(KnowledgeRepository):
@@ -125,15 +107,12 @@ class MongoKnowledgeRepository(KnowledgeRepository):
 
     async def save(self, entry: KnowledgeEntry) -> KnowledgeEntry:
         """Save a knowledge entry to the database."""
-        document = {
-            "_id": str(entry.id),
-            "content": entry.content,
-            "source_message_id": str(entry.source_message_id),
-            "project_id": str(entry.project_id) if entry.project_id else None,
-            "tags": entry.tags,
-            "created_at": entry.created_at,
-        }
-        await self.collection.replace_one({"_id": str(entry.id)}, document, upsert=True)
+        # Use Pydantic's model_dump to serialize
+        document = entry.model_dump(mode="json")
+        document["_id"] = str(entry.id)
+        document.pop("id", None)  # Remove id field, use _id instead
+
+        await self.collection.replace_one({"_id": document["_id"]}, document, upsert=True)
         return entry
 
     async def get_by_id(self, entry_id: UUID) -> Optional[KnowledgeEntry]:
@@ -157,12 +136,7 @@ class MongoKnowledgeRepository(KnowledgeRepository):
 
     @staticmethod
     def _to_entity(document: dict) -> KnowledgeEntry:
-        """Convert database document to domain entity."""
-        return KnowledgeEntry(
-            id=UUID(document["_id"]),
-            content=document["content"],
-            source_message_id=UUID(document["source_message_id"]),
-            project_id=UUID(document["project_id"]) if document.get("project_id") else None,
-            tags=document.get("tags", []),
-            created_at=document["created_at"],
-        )
+        """Convert database document to domain entity using Pydantic validation."""
+        # Map _id back to id for Pydantic model
+        document["id"] = document.pop("_id")
+        return KnowledgeEntry.model_validate(document)
