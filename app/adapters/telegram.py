@@ -1,4 +1,5 @@
 """Telegram bot adapter for receiving and sending messages."""
+
 import logging
 from typing import Callable, Awaitable
 from telegram import Update
@@ -10,7 +11,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from app.domain.entities import Message
+from app.domain.entities import Message, Project
 from app.domain.value_objects import MessageClassification
 
 logger = logging.getLogger(__name__)
@@ -23,12 +24,17 @@ class TelegramBotAdapter:
         self.bot_token = bot_token
         self.application = Application.builder().token(bot_token).build()
         self.message_handler: Callable[[Message], Awaitable[MessageClassification]] | None = None
+        self.create_project_handler: Callable[[str, str], Awaitable[Project]] | None = None
 
     def set_message_handler(
         self, handler: Callable[[Message], Awaitable[MessageClassification]]
     ) -> None:
         """Set the handler for processing incoming messages."""
         self.message_handler = handler
+
+    def set_create_project_handler(self, handler: Callable[[str, str], Awaitable[Project]]) -> None:
+        """Set the handler for creating projects."""
+        self.create_project_handler = handler
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /start command."""
@@ -43,6 +49,7 @@ class TelegramBotAdapter:
             "/start - Show this welcome message\n"
             "/help - Show help information\n"
             "/projects - List active projects\n"
+            "/createproject <name> - <description> - Create a new project\n"
             "/nextsteps <project_name> - Get suggestions for a project\n\n"
             "Just send me any message to get started!"
         )
@@ -59,15 +66,14 @@ class TelegramBotAdapter:
             "/start - Welcome message\n"
             "/help - This help message\n"
             "/projects - List all active projects\n"
+            "/createproject <name> - <description> - Create a new project\n"
             "/nextsteps <project_name> - Get AI-powered suggestions\n\n"
-            "Example:\n"
+            "Examples:\n"
             "Send: 'Working on the new API design for authentication'\n"
-            "I'll classify it, extract key info, and link it to relevant projects!"
+            "Create project: /createproject Auth System - Building secure authentication API\n"
         )
 
-    async def projects_command(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def projects_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /projects command."""
         # This would typically fetch from the repository
         # For now, return a placeholder message
@@ -77,14 +83,64 @@ class TelegramBotAdapter:
             "Project listing will be implemented with the full integration."
         )
 
-    async def nextsteps_command(
+    async def create_project_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
+        """Handle the /createproject command."""
+        if not context.args:
+            await update.message.reply_text(
+                "❌ Please provide project name and description:\n"
+                "/createproject <name> - <description>\n\n"
+                "Example:\n"
+                "/createproject Auth System - Building secure authentication API"
+            )
+            return
+
+        # Join all args and split by ' - '
+        full_text = " ".join(context.args)
+        parts = full_text.split(" - ", 1)
+
+        if len(parts) < 2:
+            await update.message.reply_text(
+                "❌ Please separate name and description with ' - ':\n"
+                "/createproject <name> - <description>\n\n"
+                "Example:\n"
+                "/createproject Auth System - Building secure authentication API"
+            )
+            return
+
+        name = parts[0].strip()
+        description = parts[1].strip()
+
+        if not name or not description:
+            await update.message.reply_text("❌ Both name and description are required!")
+            return
+
+        try:
+            if self.create_project_handler:
+                project = await self.create_project_handler(name, description)
+                await update.message.reply_text(
+                    f"✅ Project created successfully!\n\n"
+                    f"📁 Name: {project.name}\n"
+                    f"📝 Description: {project.description}\n"
+                    f"🆔 ID: {project.id}\n"
+                    f"📅 Created: {project.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+            else:
+                await update.message.reply_text("❌ Project creation is not configured yet.")
+        except ValueError as e:
+            await update.message.reply_text(f"❌ Error: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error creating project: {e}", exc_info=True)
+            await update.message.reply_text(
+                "❌ Sorry, I encountered an error creating the project. Please try again later."
+            )
+
+    async def nextsteps_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /nextsteps command."""
         if not context.args:
             await update.message.reply_text(
-                "Please specify a project name:\n"
-                "/nextsteps <project_name>"
+                "Please specify a project name:\n" "/nextsteps <project_name>"
             )
             return
 
@@ -94,9 +150,7 @@ class TelegramBotAdapter:
             "This will provide AI-powered suggestions once fully integrated."
         )
 
-    async def handle_message(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle incoming text messages."""
         if not update.message or not update.message.text:
             return
@@ -155,6 +209,7 @@ class TelegramBotAdapter:
         self.application.add_handler(CommandHandler("start", self.start_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("projects", self.projects_command))
+        self.application.add_handler(CommandHandler("createproject", self.create_project_command))
         self.application.add_handler(CommandHandler("nextsteps", self.nextsteps_command))
 
         # Message handler for text messages

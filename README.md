@@ -50,8 +50,10 @@ app/
 - ✅ **AI-Powered Classification**: Automatically categorize messages using LLM
 - ✅ **Knowledge Extraction**: Extract structured insights from conversations
 - ✅ **Project Management**: Link messages and knowledge to active projects
+- ✅ **Project Creation**: Create new projects with name and description via Telegram
 - ✅ **Next Steps Suggestions**: Get AI-powered recommendations for research and actions
-- ✅ **Persistent Storage**: SQLite/PostgreSQL database for all data
+- ✅ **Flexible Storage**: Support for both SQLAlchemy (SQLite/PostgreSQL) and MongoDB
+- ✅ **Dataclass Entities**: Clean, immutable domain entities using Python dataclasses
 - ✅ **Clean Architecture**: Maintainable, testable, and extensible codebase
 
 ## Prerequisites
@@ -59,6 +61,7 @@ app/
 - Python 3.11 or higher
 - Telegram Bot Token (from [@BotFather](https://t.me/botfather))
 - OpenAI API Key OR Google Gemini API Key
+- Database: SQLite (default), PostgreSQL, or MongoDB
 
 ## Installation
 
@@ -107,9 +110,31 @@ OPENAI_MODEL=gpt-4o-mini
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-1.5-flash
 
-# Database Configuration
+# Storage Backend (choose: sqlalchemy or mongodb)
+STORAGE_BACKEND=sqlalchemy
+
+# SQLAlchemy Database Configuration (if using sqlalchemy)
 DATABASE_URL=sqlite+aiosqlite:///./data/virt_council.db
+
+# MongoDB Configuration (if using mongodb)
+MONGODB_URL=mongodb://localhost:27017
+MONGODB_DATABASE=virt_council
 ```
+
+### Storage Backend Options
+
+The application supports two storage backends:
+
+#### SQLAlchemy (Default)
+- Supports SQLite (default), PostgreSQL, MySQL
+- Good for development and small to medium deployments
+- Configuration: Set `STORAGE_BACKEND=sqlalchemy` and configure `DATABASE_URL`
+
+#### MongoDB
+- NoSQL document database
+- Better for large-scale deployments with flexible schema
+- Configuration: Set `STORAGE_BACKEND=mongodb` and configure `MONGODB_URL` and `MONGODB_DATABASE`
+- Requires MongoDB server running locally or accessible via connection string
 
 ## Usage
 
@@ -132,12 +157,25 @@ Open Telegram and start a chat with your bot:
 
 1. **Start the bot**: `/start`
 2. **Get help**: `/help`
-3. **Send a message**: Just type any message about your work or projects
-4. **List projects**: `/projects` (to be enhanced)
-5. **Get suggestions**: `/nextsteps <project_name>`
+3. **Create a project**: `/createproject <name> - <description>`
+4. **Send a message**: Just type any message about your work or projects
+5. **List projects**: `/projects` (to be enhanced)
+6. **Get suggestions**: `/nextsteps <project_name>`
 
-### Example Workflow
+### Example Workflows
 
+#### Creating a Project
+```
+User: /createproject Auth System - Building secure authentication API with JWT
+
+Bot: ✅ Project created successfully!
+     📁 Name: Auth System
+     📝 Description: Building secure authentication API with JWT
+     🆔 ID: 123e4567-e89b-12d3-a456-426614174000
+     📅 Created: 2024-01-15 10:30:00
+```
+
+#### Processing a Message
 ```
 User: Working on the new authentication API. Need to implement JWT tokens.
 
@@ -256,11 +294,13 @@ class MyCustomUseCase:
 
 ## Technology Stack
 
-- **Python 3.11+**: Core language
+- **Python 3.11+**: Core language with dataclass support
 - **Pydantic AI**: AI framework with type safety
 - **python-telegram-bot**: Telegram Bot API wrapper
-- **SQLAlchemy**: ORM for database operations
-- **SQLite/PostgreSQL**: Data persistence
+- **SQLAlchemy**: ORM for relational database operations
+- **Motor**: Async MongoDB driver for Python
+- **pymongo**: MongoDB Python driver
+- **SQLite/PostgreSQL/MongoDB**: Data persistence options
 - **OpenAI/Gemini**: LLM providers
 - **pytest**: Testing framework
 

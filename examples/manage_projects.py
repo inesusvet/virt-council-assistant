@@ -13,17 +13,15 @@ async def add_project_example():
     """Example of adding a single project."""
     config = Config.from_env()
     db = Database(config.database_url)
-    
+
     async with await db.get_session() as session:
         repo = SQLAlchemyProjectRepository(session)
         project = Project(
-            name="Example Project",
-            description="This is an example project",
-            status="active"
+            name="Example Project", description="This is an example project", status="active"
         )
         saved_project = await repo.save(project)
         print(f"✅ Created project: {saved_project.name}")
-    
+
     await db.close()
 
 

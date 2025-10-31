@@ -1,16 +1,27 @@
 """Use cases for the Virtual Council Assistant."""
+
 from typing import Protocol
 from uuid import UUID
 
 from app.domain.entities import Message, Project, KnowledgeEntry
-from app.domain.repositories import MessageRepository, ProjectRepository, KnowledgeRepository
-from app.domain.value_objects import MessageClassification, ResearchSuggestion
+from app.domain.repositories import (
+    MessageRepository,
+    ProjectRepository,
+    KnowledgeRepository,
+)
+from app.domain.value_objects import (
+    MessageClassification,
+    ResearchSuggestion,
+    ProjectStatus,
+)
 
 
 class LLMProvider(Protocol):
     """Protocol for LLM provider interaction."""
 
-    async def classify_message(self, content: str, projects: list[Project]) -> MessageClassification:
+    async def classify_message(
+        self, content: str, projects: list[Project]
+    ) -> MessageClassification:
         """Classify a message and suggest project association."""
         ...
 
@@ -49,18 +60,18 @@ class ProcessMessageUseCase:
         projects = await self.project_repo.get_all_active()
 
         # Classify the message
-        classification = await self.llm_provider.classify_message(
-            message.content, projects
-        )
+        classification = await self.llm_provider.classify_message(message.content, projects)
 
         # Extract knowledge and save to knowledge base
         knowledge_content = await self.llm_provider.extract_knowledge(message.content)
         knowledge_entry = KnowledgeEntry(
             content=knowledge_content,
             source_message_id=saved_message.id,
-            project_id=UUID(classification.suggested_project_id)
-            if classification.suggested_project_id
-            else None,
+            project_id=(
+                UUID(classification.suggested_project_id)
+                if classification.suggested_project_id
+                else None
+            ),
             tags=classification.tags,
         )
         await self.knowledge_repo.save(knowledge_entry)
@@ -70,6 +81,37 @@ class ProcessMessageUseCase:
         await self.message_repo.mark_as_processed(saved_message.id)
 
         return classification
+
+
+class CreateProjectUseCase:
+    """Use case for creating a new project."""
+
+    def __init__(self, project_repo: ProjectRepository):
+        self.project_repo = project_repo
+
+    async def execute(self, name: str, description: str) -> Project:
+        """Create a new project with the given name and description.
+
+        Args:
+            name: Project name
+            description: Project description
+
+        Returns:
+            Created project
+
+        Raises:
+            ValueError: If a project with the same name already exists
+        """
+        # Check if project with this name already exists
+        existing = await self.project_repo.search(name)
+        for project in existing:
+            if project.name.lower() == name.lower():
+                raise ValueError(f"Project with name '{name}' already exists")
+
+        # Create new project
+        project = Project(name=name, description=description, status=ProjectStatus.ACTIVE.value)
+
+        return await self.project_repo.save(project)
 
 
 class GetNextStepsUseCase:
@@ -96,9 +138,7 @@ class GetNextStepsUseCase:
         knowledge_entries = await self.knowledge_repo.get_by_project(project_id)
 
         # Get suggestions from LLM
-        suggestions = await self.llm_provider.suggest_next_steps(
-            project, knowledge_entries
-        )
+        suggestions = await self.llm_provider.suggest_next_steps(project, knowledge_entries)
 
         return suggestions
 

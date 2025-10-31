@@ -1,4 +1,5 @@
 """Repository interfaces for the Virtual Council Assistant."""
+
 from abc import ABC, abstractmethod
 from typing import Optional
 from uuid import UUID
@@ -41,6 +42,11 @@ class ProjectRepository(ABC):
     @abstractmethod
     async def get_by_id(self, project_id: UUID) -> Optional[Project]:
         """Retrieve a project by ID."""
+        pass
+
+    @abstractmethod
+    async def get_by_name(self, name: str) -> Optional[Project]:
+        """Retrieve a project by name."""
         pass
 
     @abstractmethod
