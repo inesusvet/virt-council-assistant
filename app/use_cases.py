@@ -4,8 +4,16 @@ from typing import Protocol
 from uuid import UUID
 
 from app.domain.entities import Message, Project, KnowledgeEntry
-from app.domain.repositories import MessageRepository, ProjectRepository, KnowledgeRepository
-from app.domain.value_objects import MessageClassification, ResearchSuggestion
+from app.domain.repositories import (
+    MessageRepository,
+    ProjectRepository,
+    KnowledgeRepository,
+)
+from app.domain.value_objects import (
+    MessageClassification,
+    ResearchSuggestion,
+    ProjectStatus,
+)
 
 
 class LLMProvider(Protocol):
@@ -101,7 +109,7 @@ class CreateProjectUseCase:
                 raise ValueError(f"Project with name '{name}' already exists")
 
         # Create new project
-        project = Project(name=name, description=description, status="active")
+        project = Project(name=name, description=description, status=ProjectStatus.ACTIVE.value)
 
         return await self.project_repo.save(project)
 

@@ -5,7 +5,12 @@ from uuid import UUID
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.domain.entities import Message, Project, KnowledgeEntry
-from app.domain.repositories import MessageRepository, ProjectRepository, KnowledgeRepository
+from app.domain.repositories import (
+    MessageRepository,
+    ProjectRepository,
+    KnowledgeRepository,
+)
+from app.domain.value_objects import ProjectStatus
 
 
 class MongoMessageRepository(MessageRepository):
@@ -81,7 +86,7 @@ class MongoProjectRepository(ProjectRepository):
 
     async def get_all_active(self) -> list[Project]:
         """Get all active projects."""
-        cursor = self.collection.find({"status": "active"})
+        cursor = self.collection.find({"status": ProjectStatus.ACTIVE.value})
         documents = await cursor.to_list(length=None)
         return [self._to_entity(doc) for doc in documents]
 

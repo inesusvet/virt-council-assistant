@@ -5,6 +5,8 @@ from typing import Optional
 from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, field_validator
 
+from app.domain.value_objects import ProjectStatus
+
 
 class Message(BaseModel):
     """Represents a user message received via Telegram."""
@@ -37,7 +39,7 @@ class Project(BaseModel):
 
     name: str
     description: str
-    status: str = "active"
+    status: str = ProjectStatus.ACTIVE.value
     id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -64,9 +66,9 @@ class Project(BaseModel):
     @classmethod
     def validate_status(cls, v: str) -> str:
         """Validate project status."""
-        valid_statuses = {"active", "on_hold", "completed", "archived"}
+        valid_statuses = {status.value for status in ProjectStatus}
         if v not in valid_statuses:
-            raise ValueError(f"Status must be one of: {', '.join(valid_statuses)}")
+            raise ValueError(f"Status must be one of: {', '.join(sorted(valid_statuses))}")
         return v
 
     def update_description(self, description: str) -> None:

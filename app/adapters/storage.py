@@ -7,8 +7,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities import Message, Project, KnowledgeEntry
-from app.domain.repositories import MessageRepository, ProjectRepository, KnowledgeRepository
-from app.infrastructure.database.models import MessageModel, ProjectModel, KnowledgeEntryModel
+from app.domain.repositories import (
+    MessageRepository,
+    ProjectRepository,
+    KnowledgeRepository,
+)
+from app.domain.value_objects import ProjectStatus
+from app.infrastructure.database.models import (
+    MessageModel,
+    ProjectModel,
+    KnowledgeEntryModel,
+)
 
 
 class SQLAlchemyMessageRepository(MessageRepository):
@@ -137,7 +146,7 @@ class SQLAlchemyProjectRepository(ProjectRepository):
     async def get_all_active(self) -> list[Project]:
         """Get all active projects."""
         result = await self.session.execute(
-            select(ProjectModel).where(ProjectModel.status == "active")
+            select(ProjectModel).where(ProjectModel.status == ProjectStatus.ACTIVE.value)
         )
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]
