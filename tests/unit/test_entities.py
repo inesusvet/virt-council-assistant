@@ -1,6 +1,5 @@
 """Unit tests for domain entities."""
-import pytest
-from datetime import datetime
+
 from uuid import uuid4
 
 from app.domain.entities import Message, Project, KnowledgeEntry

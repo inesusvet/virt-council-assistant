@@ -1,31 +1,68 @@
 """SQLAlchemy repository implementations."""
+
 import json
-from typing import Optional
+from typing import Optional, Type
 from uuid import UUID
-from sqlalchemy import select, and_
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.domain.entities import Message, Project, KnowledgeEntry
-from app.domain.repositories import MessageRepository, ProjectRepository, KnowledgeRepository
-from app.infrastructure.database.models import MessageModel, ProjectModel, KnowledgeEntryModel
+from app.domain.repositories import (
+    MessageRepository,
+    ProjectRepository,
+    KnowledgeRepository,
+)
+from app.domain.value_objects import ProjectStatus
+from app.infrastructure.database.models import (
+    MessageModel,
+    ProjectModel,
+    KnowledgeEntryModel,
+)
+from app.adapters.base_repositories import SQLAlchemyBaseRepository
 
 
-class SQLAlchemyMessageRepository(MessageRepository):
+class SQLAlchemyMessageRepository(
+    SQLAlchemyBaseRepository[Message, MessageModel], MessageRepository
+):
     """SQLAlchemy implementation of MessageRepository."""
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    @property
+    def entity_class(self) -> Type[Message]:
+        """Return the Message entity class."""
+        return Message
+
+    @property
+    def model_class(self) -> Type[MessageModel]:
+        """Return the MessageModel class."""
+        return MessageModel
+
+    def _model_to_dict(self, model: MessageModel) -> dict:
+        """Convert MessageModel to dictionary for Pydantic validation."""
+        return {
+            "id": model.id,
+            "content": model.content,
+            "user_id": model.user_id,
+            "chat_id": model.chat_id,
+            "message_id": model.message_id,
+            "created_at": model.created_at,
+            "processed": model.processed,
+        }
+
+    def _to_entity(self, model: MessageModel) -> Message:
+        """Convert database model to domain entity using Pydantic validation."""
+        return Message.model_validate(self._model_to_dict(model))
 
     async def save(self, message: Message) -> Message:
         """Save a message to the database."""
+        # Use Pydantic's model_dump to get field values
+        data = message.model_dump()
         model = MessageModel(
-            id=str(message.id),
-            content=message.content,
-            user_id=message.user_id,
-            chat_id=message.chat_id,
-            message_id=message.message_id,
-            created_at=message.created_at,
-            processed=message.processed,
+            id=str(data["id"]),
+            content=data["content"],
+            user_id=data["user_id"],
+            chat_id=data["chat_id"],
+            message_id=data["message_id"],
+            created_at=data["created_at"],
+            processed=data["processed"],
         )
         self.session.add(model)
         await self.session.commit()
@@ -34,18 +71,12 @@ class SQLAlchemyMessageRepository(MessageRepository):
 
     async def get_by_id(self, message_id: UUID) -> Optional[Message]:
         """Retrieve a message by ID."""
-        result = await self.session.execute(
-            select(MessageModel).where(MessageModel.id == str(message_id))
-        )
-        model = result.scalar_one_or_none()
-        return self._to_entity(model) if model else None
+        return await self._get_by_id(message_id)
 
     async def get_unprocessed(self, limit: int = 10) -> list[Message]:
         """Get unprocessed messages."""
         result = await self.session.execute(
-            select(MessageModel)
-            .where(MessageModel.processed == False)
-            .limit(limit)
+            select(MessageModel).where(~MessageModel.processed).limit(limit)
         )
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]
@@ -60,49 +91,63 @@ class SQLAlchemyMessageRepository(MessageRepository):
             model.processed = True
             await self.session.commit()
 
-    @staticmethod
-    def _to_entity(model: MessageModel) -> Message:
-        """Convert database model to domain entity."""
-        return Message(
-            id=UUID(model.id),
-            content=model.content,
-            user_id=model.user_id,
-            chat_id=model.chat_id,
-            message_id=model.message_id,
-            created_at=model.created_at,
-            processed=model.processed,
-        )
 
-
-class SQLAlchemyProjectRepository(ProjectRepository):
+class SQLAlchemyProjectRepository(
+    SQLAlchemyBaseRepository[Project, ProjectModel], ProjectRepository
+):
     """SQLAlchemy implementation of ProjectRepository."""
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    @property
+    def entity_class(self) -> Type[Project]:
+        """Return the Project entity class."""
+        return Project
+
+    @property
+    def model_class(self) -> Type[ProjectModel]:
+        """Return the ProjectModel class."""
+        return ProjectModel
+
+    def _model_to_dict(self, model: ProjectModel) -> dict:
+        """Convert ProjectModel to dictionary for Pydantic validation."""
+        return {
+            "id": model.id,
+            "name": model.name,
+            "description": model.description,
+            "status": model.status,
+            "created_at": model.created_at,
+            "updated_at": model.updated_at,
+        }
+
+    def _to_entity(self, model: ProjectModel) -> Project:
+        """Convert database model to domain entity using Pydantic validation."""
+        return Project.model_validate(self._model_to_dict(model))
 
     async def save(self, project: Project) -> Project:
         """Save a project to the database."""
+        # Use Pydantic's model_dump to get field values
+        data = project.model_dump()
+
         # Check if project exists
         result = await self.session.execute(
-            select(ProjectModel).where(ProjectModel.id == str(project.id))
+            select(ProjectModel).where(ProjectModel.id == str(data["id"]))
         )
         existing = result.scalar_one_or_none()
 
         if existing:
             # Update existing
-            existing.name = project.name
-            existing.description = project.description
-            existing.status = project.status
-            existing.updated_at = project.updated_at
+            existing.name = data["name"]
+            existing.description = data["description"]
+            existing.status = data["status"]
+            existing.updated_at = data["updated_at"]
         else:
             # Create new
             model = ProjectModel(
-                id=str(project.id),
-                name=project.name,
-                description=project.description,
-                status=project.status,
-                created_at=project.created_at,
-                updated_at=project.updated_at,
+                id=str(data["id"]),
+                name=data["name"],
+                description=data["description"],
+                status=data["status"],
+                created_at=data["created_at"],
+                updated_at=data["updated_at"],
             )
             self.session.add(model)
 
@@ -116,16 +161,18 @@ class SQLAlchemyProjectRepository(ProjectRepository):
 
     async def get_by_id(self, project_id: UUID) -> Optional[Project]:
         """Retrieve a project by ID."""
-        result = await self.session.execute(
-            select(ProjectModel).where(ProjectModel.id == str(project_id))
-        )
+        return await self._get_by_id(project_id)
+
+    async def get_by_name(self, name: str) -> Optional[Project]:
+        """Retrieve a project by name."""
+        result = await self.session.execute(select(ProjectModel).where(ProjectModel.name == name))
         model = result.scalar_one_or_none()
         return self._to_entity(model) if model else None
 
     async def get_all_active(self) -> list[Project]:
         """Get all active projects."""
         result = await self.session.execute(
-            select(ProjectModel).where(ProjectModel.status == "active")
+            select(ProjectModel).where(ProjectModel.status == ProjectStatus.ACTIVE.value)
         )
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]
@@ -142,34 +189,48 @@ class SQLAlchemyProjectRepository(ProjectRepository):
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]
 
-    @staticmethod
-    def _to_entity(model: ProjectModel) -> Project:
-        """Convert database model to domain entity."""
-        return Project(
-            id=UUID(model.id),
-            name=model.name,
-            description=model.description,
-            status=model.status,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
 
-
-class SQLAlchemyKnowledgeRepository(KnowledgeRepository):
+class SQLAlchemyKnowledgeRepository(
+    SQLAlchemyBaseRepository[KnowledgeEntry, KnowledgeEntryModel], KnowledgeRepository
+):
     """SQLAlchemy implementation of KnowledgeRepository."""
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    @property
+    def entity_class(self) -> Type[KnowledgeEntry]:
+        """Return the KnowledgeEntry entity class."""
+        return KnowledgeEntry
+
+    @property
+    def model_class(self) -> Type[KnowledgeEntryModel]:
+        """Return the KnowledgeEntryModel class."""
+        return KnowledgeEntryModel
+
+    def _model_to_dict(self, model: KnowledgeEntryModel) -> dict:
+        """Convert KnowledgeEntryModel to dictionary for Pydantic validation."""
+        return {
+            "id": model.id,
+            "content": model.content,
+            "source_message_id": model.source_message_id,
+            "project_id": model.project_id if model.project_id else None,
+            "tags": json.loads(model.tags) if model.tags else [],
+            "created_at": model.created_at,
+        }
+
+    def _to_entity(self, model: KnowledgeEntryModel) -> KnowledgeEntry:
+        """Convert database model to domain entity using Pydantic validation."""
+        return KnowledgeEntry.model_validate(self._model_to_dict(model))
 
     async def save(self, entry: KnowledgeEntry) -> KnowledgeEntry:
         """Save a knowledge entry to the database."""
+        # Use Pydantic's model_dump to get field values
+        data = entry.model_dump()
         model = KnowledgeEntryModel(
-            id=str(entry.id),
-            content=entry.content,
-            source_message_id=str(entry.source_message_id),
-            project_id=str(entry.project_id) if entry.project_id else None,
-            tags=json.dumps(entry.tags),
-            created_at=entry.created_at,
+            id=str(data["id"]),
+            content=data["content"],
+            source_message_id=str(data["source_message_id"]),
+            project_id=str(data["project_id"]) if data["project_id"] else None,
+            tags=json.dumps(data["tags"]),
+            created_at=data["created_at"],
         )
         self.session.add(model)
         await self.session.commit()
@@ -178,18 +239,12 @@ class SQLAlchemyKnowledgeRepository(KnowledgeRepository):
 
     async def get_by_id(self, entry_id: UUID) -> Optional[KnowledgeEntry]:
         """Retrieve a knowledge entry by ID."""
-        result = await self.session.execute(
-            select(KnowledgeEntryModel).where(KnowledgeEntryModel.id == str(entry_id))
-        )
-        model = result.scalar_one_or_none()
-        return self._to_entity(model) if model else None
+        return await self._get_by_id(entry_id)
 
     async def get_by_project(self, project_id: UUID) -> list[KnowledgeEntry]:
         """Get all knowledge entries for a project."""
         result = await self.session.execute(
-            select(KnowledgeEntryModel).where(
-                KnowledgeEntryModel.project_id == str(project_id)
-            )
+            select(KnowledgeEntryModel).where(KnowledgeEntryModel.project_id == str(project_id))
         )
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]
@@ -204,15 +259,3 @@ class SQLAlchemyKnowledgeRepository(KnowledgeRepository):
         )
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]
-
-    @staticmethod
-    def _to_entity(model: KnowledgeEntryModel) -> KnowledgeEntry:
-        """Convert database model to domain entity."""
-        return KnowledgeEntry(
-            id=UUID(model.id),
-            content=model.content,
-            source_message_id=UUID(model.source_message_id),
-            project_id=UUID(model.project_id) if model.project_id else None,
-            tags=json.loads(model.tags) if model.tags else [],
-            created_at=model.created_at,
-        )

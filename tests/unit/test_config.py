@@ -1,5 +1,5 @@
 """Unit tests for configuration."""
-import os
+
 import pytest
 
 from app.infrastructure.config import Config
@@ -32,6 +32,9 @@ def test_config_validation_missing_telegram_token() -> None:
         gemini_api_key="",
         gemini_model="",
         database_url="sqlite:///test.db",
+        storage_backend="sqlalchemy",
+        mongodb_url="",
+        mongodb_database="",
         log_level="INFO",
         debug=False,
     )
@@ -50,6 +53,9 @@ def test_config_validation_missing_openai_key() -> None:
         gemini_api_key="",
         gemini_model="",
         database_url="sqlite:///test.db",
+        storage_backend="sqlalchemy",
+        mongodb_url="",
+        mongodb_database="",
         log_level="INFO",
         debug=False,
     )
@@ -68,6 +74,9 @@ def test_config_validation_missing_gemini_key() -> None:
         gemini_api_key="",
         gemini_model="gemini-1.5-flash",
         database_url="sqlite:///test.db",
+        storage_backend="sqlalchemy",
+        mongodb_url="",
+        mongodb_database="",
         log_level="INFO",
         debug=False,
     )
@@ -86,6 +95,9 @@ def test_config_validation_success() -> None:
         gemini_api_key="",
         gemini_model="",
         database_url="sqlite:///test.db",
+        storage_backend="sqlalchemy",
+        mongodb_url="",
+        mongodb_database="",
         log_level="INFO",
         debug=False,
     )

@@ -1,4 +1,5 @@
 """Value objects for the Virtual Council Assistant."""
+
 from enum import Enum
 from typing import Optional
 
