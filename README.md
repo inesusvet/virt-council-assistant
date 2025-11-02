@@ -129,6 +129,8 @@ The application supports two storage backends:
 - Supports SQLite (default), PostgreSQL, MySQL
 - Good for development and small to medium deployments
 - Configuration: Set `STORAGE_BACKEND=sqlalchemy` and configure `DATABASE_URL`
+- **SQLite**: `DATABASE_URL=sqlite+aiosqlite:///./data/virt_council.db`
+- **PostgreSQL** (async with aiopg): `DATABASE_URL=postgresql+aiopg://user:password@localhost:5432/virt_council`
 
 #### MongoDB
 - NoSQL document database
