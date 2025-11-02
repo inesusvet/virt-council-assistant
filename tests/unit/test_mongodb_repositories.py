@@ -19,6 +19,10 @@ class MockDatabase:
         self.projects = MockCollection()
         self.knowledge_entries = MockCollection()
 
+    def __getitem__(self, key: str):
+        """Support subscript access like database['collection_name']."""
+        return getattr(self, key)
+
 
 class MockCollection:
     """Mock MongoDB collection for testing."""
