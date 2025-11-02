@@ -2,8 +2,10 @@
 
 import json
 from pydantic_ai import Agent
-from pydantic_ai.models.gemini import GeminiModel
+from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.google import GoogleProvider
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.adapters.llm import prompts
 from app.domain.entities import KnowledgeEntry, Project
@@ -20,9 +22,11 @@ class PydanticAILLMProvider:
 
         # Initialize the model based on provider
         if provider == "openai":
-            self.model = OpenAIModel(model_name)
+            provider = OpenAIProvider(api_key=api_key)
+            self.model = OpenAIModel(model_name, provider=provider)
         elif provider == "gemini":
-            self.model = GeminiModel(model_name)
+            provider = GoogleProvider(api_key=api_key)
+            self.model = GoogleModel(model_name, provider=provider)
         else:
             raise ValueError(f"Unsupported LLM provider: {provider}")
 
